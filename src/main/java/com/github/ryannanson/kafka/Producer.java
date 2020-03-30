@@ -1,9 +1,9 @@
 package com.github.ryannanson.kafka;
 
-import org.apache.kafka.clients.producer.KafkaProducer;
-import org.apache.kafka.clients.producer.ProducerConfig;
-import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.clients.producer.*;
 import org.apache.kafka.common.serialization.StringSerializer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Properties;
 
@@ -11,6 +11,8 @@ public class Producer {
 
     // Address of kafka server.
     private static final String BOOTSTRAP_SERVERS = "127.0.0.1:9092";
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(Producer.class);
 
     public static void main(String[] args) {
 
@@ -23,11 +25,28 @@ public class Producer {
         // Create producer.
         KafkaProducer<String, String> producer = new KafkaProducer<String, String>(properties);
 
-        // Create producer record.
-        ProducerRecord<String, String> record = new ProducerRecord<String, String>("first_topic", "Hello world");
 
-        // Send data.
-        producer.send(record);
+        for (int i=0; i<10; i++) {
+            // Create producer record.
+            final ProducerRecord<String, String> record = new ProducerRecord<String, String>("first_topic", "Hello world " + i);
+
+            // Send data.
+            producer.send(record, new Callback() {
+                public void onCompletion(RecordMetadata recordMetadata, Exception e) {
+                    if (e == null) {
+                        // The record was successfully sent.
+                        LOGGER.info("Received new metadata. \n" +
+                                "Topic: " + recordMetadata.topic() + "\n" +
+                                "Partition: " + recordMetadata.partition() + "\n" +
+                                "Offset: " + recordMetadata.offset() + "\n" +
+                                "TimeStamp: " + recordMetadata.timestamp());
+                    } else {
+                        // An error occurred while sending record.
+                        LOGGER.error("error while producing: ", e);
+                    }
+                }
+            });
+        }
 
         // Flush data.
         producer.flush();
